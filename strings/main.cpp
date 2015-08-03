@@ -8,11 +8,15 @@
 
 int main()
 {
-	strings::tagged_string str = "hello, I'm no longer a short string";
-	strings::tagged_string short_string = "short!";
+	strings::detail::bitchunk<int> i = strings::detail::make_bitchunk(0);
+	strings::tagged_string str = "hellooooooooo";
 
-	std::cout << str << std::endl;
-	std::cout << short_string << std::endl;
+	int j = i(1,4)(1,3) = 0b11;
+
+	std::cout << std::hex;
+	std::cout << i(0,8) << std::endl;
+
+	std::cout << std::endl << str << std::endl;
 
 	std::cin.get();
 }

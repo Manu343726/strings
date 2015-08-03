@@ -53,13 +53,6 @@ namespace strings
 			{
 				return *pointer();
 			}
-
-			tagged_ptr& operator=(T* ptr)
-			{
-				chunk_t::operator=(ptr);
-
-				return *this;
-			}
 		};
 	}
 }

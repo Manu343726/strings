@@ -4,6 +4,7 @@
 #include "tagged_ptr.hpp"
 
 #include <memory>
+#include <ostream>
 
 namespace strings
 {
@@ -238,7 +239,7 @@ namespace strings
 			class one_more_assign_proxy
 			{
 				char* char_ref_;
-				typename ptr_t::chunk_accessor<> acc_;
+				strings::detail::bitchunk<Char*,false> acc_;
 
 			public:
 				one_more_assign_proxy(char* char_ref, decltype(acc_) acc) :
@@ -340,9 +341,9 @@ namespace strings
 
 		friend std::ostream& operator<<(std::ostream& os, const basic_tagged_string& str)
 		{
-			for (auto c : str)
+			for (Char c : str)
 				os << c;
-			return os << '\0';
+			return os << "\0";
 		}
 	};
 

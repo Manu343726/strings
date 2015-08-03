@@ -4,31 +4,123 @@
 #include "utility.hpp"
 
 #include <type_traits>
+#include <utility>
 
 namespace strings
 {
 	namespace detail
 	{
-		template<typename T>
-		struct bitchunk
+		template<typename T, bool FullRange>
+		struct bitchunk_base
 		{
-			//static_assert(std::is_integral<T>::value || std::is_pointer<T>::value, "bitchunk only holds integrals or pointers");
-
-			bitchunk(T data) :
-				data_{ data }
+			bitchunk_base() = default;
+			bitchunk_base(T* data_ref, bit_index_t begin = 0, bit_index_t end = sizeof_bits<T>()) :
+				data_ref_{data_ref},
+				begin_{ begin },
+				end_{ end }
 			{}
 
-			template<typename T_ = T>
-			struct chunk_accessor;
+			bit_index_t begin() const
+			{
+				return begin_;
+			}
+
+			bit_index_t end() const
+			{
+				return end_;
+			}
+
+			const T& data() const
+			{
+				return *data_ref_;
+			}
+
+			T& data()
+			{
+				return *data_ref_;
+			}
+
+			T* data_ptr() const
+			{
+				return data_ref_;
+			}
+
+			T* data_ptr()
+			{
+				return data_ref_;
+			}
+
+		private:
+			T* data_ref_ = nullptr;
+			bit_index_t begin_ = 0, end_ = 0;
+		};
+
+		template<typename T>
+		struct bitchunk_base<T, true>
+		{
+			bitchunk_base() = default;
+			bitchunk_base(const T* data_ref, bit_index_t begin = 0, bit_index_t end = sizeof_bits<T>()) :
+				data_{*data_ref}
+			{}
+
+			constexpr bit_index_t begin() const
+			{
+				return 0;
+			}
+
+			constexpr bit_index_t end() const
+			{
+				return sizeof_bits<T>();
+			}
+
+			const T& data() const
+			{
+				return data_;
+			}
+
+			T& data()
+			{
+				return data_;
+			}
+
+			T* data_ptr()
+			{
+				return &data_;
+			}
+
+			T* data_ptr() const
+			{
+				return &data_;
+			}
+
+		private:
+			T data_;
+		};
+
+		template<typename T, bool FullRange = true>
+		struct bitchunk : public bitchunk_base<T, FullRange>
+		{
+			using base = bitchunk_base<T, FullRange>;
+
+			bitchunk() = default;
+
+			bitchunk(const T& data, bit_index_t begin = 0, bit_index_t end = sizeof_bits<T>()) :
+				base{ &data, begin, end }
+			{}
+
+			template<bool fullrange>
+			bitchunk(bitchunk<T,fullrange>& other, bit_index_t begin = 0, bit_index_t end = sizeof_bits<T>()) :
+				base{ other.data_ptr(), other.begin() + begin, other.begin() + end }
+			{}
 
 			raw_data_t operator()(bit_index_t begin, bit_index_t end) const
 			{
-				return read_chunk(data_, begin, end);
+				return read_chunk(base::data(), begin, end);
 			}
 
-			chunk_accessor<> operator()(bit_index_t begin, bit_index_t end)
+			bitchunk<T,false> operator()(bit_index_t begin, bit_index_t end)
 			{
-				return chunk_accessor<>(&data_, begin, end);
+				return { *this, begin, end };
 			}
 
 			raw_data_t operator()(bit_index_t bit) const
@@ -36,124 +128,65 @@ namespace strings
 				return (*this)(bit, bit + 1);
 			}
 
-			chunk_accessor<> operator()(bit_index_t bit)
+			bitchunk<T, false> operator()(bit_index_t bit)
 			{
 				return (*this)(bit, bit + 1);
 			}
 
-			T get() const
+			raw_data_t get() const
 			{
-				return data_;
+				return read_chunk(base::data(), base::begin(), base::end());
 			}
 
-			T& get()
+			operator raw_data_t() const
 			{
-				return data_;
+				return get();
 			}
 
-			bitchunk& operator=(T data)
+			template<bool fullrange = FullRange, typename = std::enable_if_t<fullrange>>
+			bitchunk& operator=(T data) {
+				base::data() = data;
+
+				return *this;
+			}
+
+			template<typename U>
+			bitchunk& operator=(U data)
 			{
-				data_ = data;
+				raw_data_t truncated = truncate(data, base::end() - base::begin());
+				raw_data_t hi = high_part(base::data(), base::end() - 1);
+				raw_data_t lo = low_part(base::data(), base::begin());
+				raw_data_t result = (hi << (base::end() - 1)) | (truncated << base::begin()) | lo;
+
+				assign_data<T>::apply(base::data_ptr(), result);
 
 				return *this;
 			}
 
 		private:
-			T data_;
-
 			static raw_data_t read_chunk(T data, bit_index_t begin, bit_index_t end)
 			{
-				raw_data_t mask = ((0ull - 1ull) >> (sizeof_bits<T>() - end));
+				raw_data_t mask = (0ull - 1ull) - ((0ull - 1ull) << (end-1));
 				raw_data_t result = (((raw_data_t)data) & mask) >> begin;
 				return result;
 			}
 
-			template<typename T_ = T>
-			struct chunk_accessor
+			template<typename U, typename = void>
+			struct assign_data
 			{
-				using chunk_accessor_tag = void;
-
-				using value_type = T;
-
-				chunk_accessor() = default;
-
-				chunk_accessor(T* data_ref, bit_index_t begin, bit_index_t end) :
-					begin{ begin },
-					end{ end },
-					data_ref_{ data_ref }
-				{}
-
-				raw_data_t get() const
+				static void apply(T* data_ref, raw_data_t data)
 				{
-					return read_chunk(*data_ref_, begin, end);
+					*data_ref = (T)data;
 				}
+			};
 
-				operator raw_data_t() const
+			template<typename U>
+			struct assign_data<U, std::enable_if_t<!std::is_integral<U>::value && !std::is_pointer<U>::value>>
+			{
+				static void apply(T* data_ref, raw_data_t data)
 				{
-					return get();
+					*data_ref = data;
 				}
-
-				template<typename U>
-				raw_data_t operator=(const U& data)
-				{
-					return operator=((raw_data_t)data);
-				}
-
-				raw_data_t operator=(raw_data_t data)
-				{
-					bit_index_t data_width = end - begin;
-					raw_data_t truncated = data & ((0ull - 1ull) >> (sizeof_bits<T>() - data_width));
-					raw_data_t hi = (raw_data_t)*data_ref_ >> (end - 1);
-					raw_data_t lo = (raw_data_t)*data_ref_ & ((0ull - 1ull) >> (sizeof_bits<T>() - 1 - begin));
-					raw_data_t result = (hi << (end - 1)) | (truncated << begin) | lo;
-
-					assign_data<T>::apply(data_ref_, result);
-
-					return result;
-				}
-
-				template<typename U, typename = void>
-				struct assign_data
-				{
-					static void apply(T* data_ref, raw_data_t data)
-					{
-						*data_ref = (T)data;
-					}
-				};
-
-				template<typename U>
-				struct assign_data<U, std::enable_if_t<!std::is_integral<U>::value && !std::is_pointer<U>::value>>
-				{
-					static void apply(T* data_ref, raw_data_t data)
-					{
-						*data_ref = data;
-					}
-				};
-
-				
-				// Note this proxy class is not designed to be assigned, instead performs asignment of referenced chunk
-
-				template<typename U>
-				raw_data_t operator=(const chunk_accessor<U>& acc)
-				{
-					return (*this) = *acc.data_ref_;
-				}
-
-				template<typename U>
-				raw_data_t operator=(chunk_accessor<U>&& acc)
-				{
-					return (*this) = *acc.data_ref_;
-				}
-
-				// The above two operators break The Rule Of Five, let's fix with default semantics:
-
-				chunk_accessor(const chunk_accessor&) = default;
-				chunk_accessor(chunk_accessor&&) = default;
-				~chunk_accessor() = default;
-
-			private:
-				T* data_ref_ = nullptr;
-				bit_index_t begin = 0, end = 0;
 			};
 		};
 

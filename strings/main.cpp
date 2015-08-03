@@ -8,12 +8,15 @@
 
 int main()
 {
-	auto i = strings::detail::make_bitchunk(0x00000000);
+	strings::detail::bitchunk<int> i = strings::detail::make_bitchunk(0);
+	strings::tagged_string str = "hellooooooooo";
 
-	i(0, 4) = 0xf;
+	int j = i(1,4)(1,3) = 0b11;
 
 	std::cout << std::hex;
-	std::cout << i << std::endl;
+	std::cout << i(0,8) << std::endl;
+
+	std::cout << std::endl << str << std::endl;
 
 	std::cin.get();
 }

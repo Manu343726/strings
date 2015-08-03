@@ -100,6 +100,25 @@ int main()
 }
 ```
 
+`strings::detail::bitchunk<T>` owns the underlying integer by default, but it's designed to act as view of another `bitchunk`s if required. That means you can get "*chunks of chunks of chunks of...". For example:
+
+``` cpp
+auto i = strings::detail::make_bitchunk(0x00000F0); // Same as bitchunk<int>{0x0000000F0}
+
+int j = i(16,32)(4,8) = 0xF; // Sets bits [20,24) to 0xF
+```
+
+This works great when manipulating data from tagged pointers:
+
+``` cpp
+void set_data(tagged_pointer<int>& ptr, unsigned int count, unsigned int tag)
+{
+    ptr.data()(0,8) = count;
+    ptr.data()(8,16) = tag;
+}
+```
+```
+
 # License
 
 This project is licensed under the terms of the MIT license. See `LICENSE.md` file for more details.

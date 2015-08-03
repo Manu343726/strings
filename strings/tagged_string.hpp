@@ -4,6 +4,7 @@
 #include "tagged_ptr.hpp"
 
 #include <memory>
+#include <ostream>
 
 namespace strings
 {
@@ -340,9 +341,9 @@ namespace strings
 
 		friend std::ostream& operator<<(std::ostream& os, const basic_tagged_string& str)
 		{
-			for (auto c : str)
+			for (Char c : str)
 				os << c;
-			return os << '\0';
+			return os << "\0";
 		}
 	};
 

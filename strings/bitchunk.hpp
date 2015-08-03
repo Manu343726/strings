@@ -14,8 +14,8 @@ namespace strings
 		struct bitchunk_base
 		{
 			bitchunk_base() = default;
-			bitchunk_base(const T* data_ref, bit_index_t begin = 0, bit_index_t end = sizeof_bits<T>()) :
-				data_ref_{const_cast<T*>(data_ref)},
+			bitchunk_base(T* data_ref, bit_index_t begin = 0, bit_index_t end = sizeof_bits<T>()) :
+				data_ref_{data_ref},
 				begin_{ begin },
 				end_{ end }
 			{}
@@ -109,7 +109,7 @@ namespace strings
 			{}
 
 			template<bool fullrange>
-			bitchunk(bitchunk<T,fullrange> other, bit_index_t begin = 0, bit_index_t end = sizeof_bits<T>()) :
+			bitchunk(bitchunk<T,fullrange>& other, bit_index_t begin = 0, bit_index_t end = sizeof_bits<T>()) :
 				base{ other.data_ptr(), other.begin() + begin, other.begin() + end }
 			{}
 
@@ -144,8 +144,7 @@ namespace strings
 			}
 
 			template<bool fullrange = FullRange, typename = std::enable_if_t<fullrange>>
-			bitchunk& operator=(T data)
-			{
+			bitchunk& operator=(T data) {
 				base::data() = data;
 
 				return *this;
@@ -154,11 +153,9 @@ namespace strings
 			template<typename U>
 			bitchunk& operator=(U data)
 			{
-				bit_index_t data_width = base::end() - base::begin();
-				raw_data_t raw_data = (raw_data_t)base::data();
-				raw_data_t truncated = (raw_data_t)data & ((0ull - 1ull) >> (sizeof_bits<T>() - data_width));
-				raw_data_t hi = raw_data >> (base::end() - 1);
-				raw_data_t lo = raw_data & ((0ull - 1ull) >> (sizeof_bits<T>() - 1 - base::begin()));
+				raw_data_t truncated = truncate(data, base::end() - base::begin());
+				raw_data_t hi = high_part(base::data(), base::end() - 1);
+				raw_data_t lo = low_part(base::data(), base::begin());
 				raw_data_t result = (hi << (base::end() - 1)) | (truncated << base::begin()) | lo;
 
 				assign_data<T>::apply(base::data_ptr(), result);
@@ -169,7 +166,7 @@ namespace strings
 		private:
 			static raw_data_t read_chunk(T data, bit_index_t begin, bit_index_t end)
 			{
-				raw_data_t mask = ((0ull - 1ull) >> (sizeof_bits<T>() - end));
+				raw_data_t mask = (0ull - 1ull) - ((0ull - 1ull) << (end-1));
 				raw_data_t result = (((raw_data_t)data) & mask) >> begin;
 				return result;
 			}

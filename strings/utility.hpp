@@ -2,6 +2,7 @@
 #define UTILITY_HPP
 
 #include <climits>
+#include <cstdint>
 
 namespace strings
 {

@@ -238,7 +238,7 @@ namespace strings
 			class one_more_assign_proxy
 			{
 				char* char_ref_;
-				typename ptr_t::chunk_accessor<> acc_;
+				strings::detail::bitchunk<Char*,false> acc_;
 
 			public:
 				one_more_assign_proxy(char* char_ref, decltype(acc_) acc) :

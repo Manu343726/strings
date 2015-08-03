@@ -17,10 +17,18 @@ GNU stdlibc++'s `std::string` was usually built using this technique, but C++11 
 
 ## Short String Optimization
 
-Consists in adding a static buffer to the string type itself, so when strings are short enough to fit in this buffer, its used as storage directly, avoiding dynamic memory allocation and improving cache friendliness.
+Consists in adding a static buffer to the string type itself, so when strings are short enough to fit in this buffer, it's used as storage directly, avoiding dynamic memory allocation and improving cache friendliness.
 
 ```
-TODO :)
+template<typename Char>
+struct sso_string
+{
+	TODO ¬¬
+
+private:
+	Char* dynamic_buffer_;
+	Char static_buffer_[20];
+};
 ```
 
 ## Short String Optimization using tagged pointers
@@ -58,40 +66,39 @@ The string operates in two different modes:
  - **Wide**: The string does not fit in the pointer, so usual dynamic memory allocation is done. The buffer address is stored in the pointer.
 
 
- The implementation starts with a wrapper around a tagged pointer, `strings::detail::tagged_pointer<T>` that provides `::data()`, `address()`, `::pointer()`, etc accessors for easy manipulation of tagged pointer data:
+The implementation starts with a wrapper around a tagged pointer, `strings::detail::tagged_pointer<T>` that provides `::data()`, `address()`, `::pointer()`, etc accessors for easy manipulation of tagged pointer data:
 
- ``` cpp
- int main()
- {
-     int i
-     strings::detail::tagged_pointer<int> ptr = &i;
+``` cpp
+int main()
+{
+    int i
+    strings::detail::tagged_pointer<int> ptr = &i;
 
-     ptr.data() = 0xabcd;
-     *ptr = 5;
+    ptr.data() = 0xabcd;
+    *ptr = 5;
 
-     std::cout << ptr.data(); // Gives 0xabcd
-     std::cout << ptr.address(); // Gives i address (0xWHATEVER)
-     std::cout << ptr.pointer(); // Gives pointer to i
-     std::cout << i; // Gives 5
- }
- ```
+    std::cout << ptr.data(); // Gives 0xabcd
+    std::cout << ptr.address(); // Gives i address (0xWHATEVER)
+    std::cout << ptr.pointer(); // Gives pointer to i
+    std::cout << i; // Gives 5
+}
+```
 
 Finally, `strings::detail::tagged_pointer<T>` type is built upon `strings::detail::bitchunk<T>`, an integer wrapper for simple bit access like `std::bitset`, but with manipulation of chunks of bits in mind, instead of individual bits:
 
- ``` cpp
- int main()
- {
-     strings::detail::bitchunk<int> i = 0xFFFFF00F;
+``` cpp
+int main()
+{
+    strings::detail::bitchunk<int> i = 0xFFFFF00F;
 
-     i(4,8) = 0xA;
-
-     std::cout << i(0,4);   // Gives 0xF 
-     std::cout << i(4,8);   // Gives 0xA
-     std::cout << i(8,12);  // Gives 0x0
-     std::cout << i(12,16); // Gives 0xF
-     ...
- }
- ```
+    i(4,8) = 0xA;
+    std::cout << i(0,4);   // Gives 0xF 
+    std::cout << i(4,8);   // Gives 0xA
+    std::cout << i(8,12);  // Gives 0x0
+    std::cout << i(12,16); // Gives 0xF
+    ...
+}
+```
 
 # License
 

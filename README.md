@@ -117,7 +117,6 @@ void set_data(tagged_pointer<int>& ptr, unsigned int count, unsigned int tag)
     ptr.data()(8,16) = tag;
 }
 ```
-```
 
 # License
 

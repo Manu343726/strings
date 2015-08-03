@@ -1,4 +1,4 @@
-# String
+# Strings
 
 Just another strings library. No serious purposes, but a way to practice and improve my C++ skills. 
 

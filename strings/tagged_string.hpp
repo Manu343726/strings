@@ -13,6 +13,7 @@ namespace strings
 	{
 		template<std::size_t N>
 		basic_tagged_string(const char(&str)[N])
+			: data_{nullptr}
 		{
 			if (N-1 <= short_string_threshold())
 			{
@@ -96,10 +97,11 @@ namespace strings
 
 		bool short_string_bit_() const
 		{
+			detail::raw_data_t bit = data_(63);
 			return static_cast<bool>(data_(63));
 		}
 
-		auto short_string_bit_()
+		detail::bitchunk<Char*,false> short_string_bit_()
 		{
 			return data_(63);
 		}
@@ -261,7 +263,7 @@ namespace strings
 						*char_ref_ = character;
 				}
 
-				operator char() const
+				operator Char() const
 				{
 					if (char_ref_ == nullptr)
 						return acc_.get();
@@ -283,7 +285,7 @@ namespace strings
 				if (str_->short_string_bit_())
 					return { const_cast<basic_tagged_string*>(str_)->short_string_get_char_(index_) };
 				else
-					return{ &const_cast<basic_tagged_string*>(str_)->wide_string_get_char_(index_) };
+					return { &const_cast<basic_tagged_string*>(str_)->wide_string_get_char_(index_) };
 			}
 			
 		private:
@@ -341,6 +343,8 @@ namespace strings
 
 		friend std::ostream& operator<<(std::ostream& os, const basic_tagged_string& str)
 		{
+			os << "Entering tagged_string::operator<<(ostream)\n";
+
 			for (Char c : str)
 				os << c;
 			return os << "\0";

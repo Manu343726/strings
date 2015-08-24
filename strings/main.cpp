@@ -8,15 +8,12 @@
 
 int main()
 {
-	strings::detail::bitchunk<int> i = strings::detail::make_bitchunk(0);
-	strings::tagged_string str = "hellooooooooo";
+	strings::detail::bitchunk<unsigned int> i = strings::detail::make_bitchunk(0xFFFFFFFF);
 
-	int j = i(1,4)(1,3) = 0b11;
+	strings::tagged_string str = "h";
 
-	std::cout << std::hex;
-	std::cout << i(0,8) << std::endl;
-
-	std::cout << std::endl << str << std::endl;
+	for(char c : str)
+		std::cout << c;
 
 	std::cin.get();
 }

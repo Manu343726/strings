@@ -153,41 +153,22 @@ namespace strings
 			template<typename U>
 			bitchunk& operator=(U data)
 			{
+				raw_data_t raw_data_ = raw_data();
 				raw_data_t truncated = truncate(data, base::end() - base::begin());
-				raw_data_t hi = high_part(base::data(), base::end() - 1);
-				raw_data_t lo = low_part(base::data(), base::begin());
+				raw_data_t hi = high_part(raw_data_, base::end() - 1);
+				raw_data_t lo = low_part(raw_data_, base::begin());
 				raw_data_t result = (hi << (base::end() - 1)) | (truncated << base::begin()) | lo;
 
-				assign_data<T>::apply(base::data_ptr(), result);
+				raw_manip::set_by_ptr(base::data_ptr(), result);
 
 				return *this;
 			}
 
 		private:
-			static raw_data_t read_chunk(T data, bit_index_t begin, bit_index_t end)
+			raw_data_t raw_data() const
 			{
-				raw_data_t mask = (0ull - 1ull) - ((0ull - 1ull) << (end-1));
-				raw_data_t result = (((raw_data_t)data) & mask) >> begin;
-				return result;
+				return raw_manip::get_by_ptr(base::data_ptr());
 			}
-
-			template<typename U, typename = void>
-			struct assign_data
-			{
-				static void apply(T* data_ref, raw_data_t data)
-				{
-					*data_ref = (T)data;
-				}
-			};
-
-			template<typename U>
-			struct assign_data<U, std::enable_if_t<!std::is_integral<U>::value && !std::is_pointer<U>::value>>
-			{
-				static void apply(T* data_ref, raw_data_t data)
-				{
-					*data_ref = data;
-				}
-			};
 		};
 
 		namespace

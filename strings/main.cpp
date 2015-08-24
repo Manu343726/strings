@@ -9,11 +9,15 @@
 int main()
 {
 	strings::detail::bitchunk<unsigned int> i = strings::detail::make_bitchunk(0xFFFFFFFF);
+	strings::tagged_string str = "hello";
+	strings::detail::tagged_ptr<strings::tagged_string> ptr = &str;
 
-	strings::tagged_string str = "h";
+	std::cout << std::hex;
+	std::cout << "length: " << str.length() << " (short: " << str.is_short() << ")\n";
+	std::cout << "addr: " << ptr.address() << " (from " << &str << ")\n";
 
-	for(char c : str)
-		std::cout << c;
+	for (int i = 0; i < str.length(); ++i)
+		std::cout << str[i] << std::endl;
 
 	std::cin.get();
 }

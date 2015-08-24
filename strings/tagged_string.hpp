@@ -50,6 +50,11 @@ namespace strings
 			return length();
 		}
 
+		bool is_short() const
+		{
+			return short_string_bit_();
+		}
+
 		~basic_tagged_string()
 		{
 			if (!short_string_bit_())
@@ -108,33 +113,29 @@ namespace strings
 
 		std::size_t string_length_() const
 		{
-			return (std::size_t)(data_(48,63));
+			return (std::size_t)(data_(48,62));
 		}
 
 		auto string_length_()
 		{
-			return data_(48,63);
+			return data_(48,62);
 		}
 
 		// Short string mode methods
 
 		static strings::detail::bit_index_t char_index_(std::size_t i)
 		{
-			return i * CHAR_BIT;
+			return i * detail::sizeof_bits<Char>();
 		}
 
-		char short_string_get_char_(std::size_t i) const
+		Char short_string_get_char_(std::size_t i) const
 		{
-			auto index = char_index_(i);
-
-			return (char)data_(index, index + CHAR_BIT);
+			return (Char)data_(char_index_(i), char_index_(i + 1));
 		}
 
 		auto short_string_get_char_(std::size_t i)
 		{
-			auto index = char_index_(i);
-
-			return data_(index, index + CHAR_BIT);
+			return data_(char_index_(i), char_index_(i+1));
 		}
 
 		void copy_to_short_string_(const Char* str, std::size_t length)
@@ -240,19 +241,18 @@ namespace strings
 		protected:
 			class one_more_assign_proxy
 			{
+				using bitchunk_t = strings::detail::bitchunk<Char*, false>;
 				char* char_ref_;
-				strings::detail::bitchunk<Char*,false> acc_;
+				bitchunk_t acc_;
 
 			public:
-				one_more_assign_proxy(char* char_ref, decltype(acc_) acc) :
-					char_ref_{ char_ref },
-					acc_{ acc }
+				one_more_assign_proxy(char* char_ref) : 
+					char_ref_{char_ref}
 				{}
 
-				one_more_assign_proxy(char* char_ref) : one_more_assign_proxy{ char_ref, decltype(acc_){} }
-				{}
-
-				one_more_assign_proxy(decltype(acc_) acc) : one_more_assign_proxy{ nullptr, acc }
+				one_more_assign_proxy(const bitchunk_t& acc) :
+					char_ref_{nullptr},
+					acc_{acc}
 				{}
 
 				Char operator=(Char character)
@@ -343,8 +343,6 @@ namespace strings
 
 		friend std::ostream& operator<<(std::ostream& os, const basic_tagged_string& str)
 		{
-			os << "Entering tagged_string::operator<<(ostream)\n";
-
 			for (Char c : str)
 				os << c;
 			return os << "\0";

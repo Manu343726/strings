@@ -10,8 +10,52 @@ namespace strings
 {
 	namespace detail
 	{
+		// The chunk holds the value
 		template<typename T, bool FullRange>
 		struct bitchunk_base
+		{
+			bitchunk_base() = default;
+			bitchunk_base(const T* data_ref, bit_index_t begin = 0, bit_index_t end = sizeof_bits<T>()) :
+				data_{*data_ref}
+			{}
+
+			constexpr bit_index_t begin() const
+			{
+				return 0;
+			}
+
+			constexpr bit_index_t end() const
+			{
+				return sizeof_bits<T>();
+			}
+
+			const T& data() const
+			{
+				return data_;
+			}
+
+			T& data()
+			{
+				return data_;
+			}
+
+			T* data_ptr()
+			{
+				return &data_;
+			}
+
+			T* data_ptr() const
+			{
+				return &data_;
+			}
+
+		private:
+			T data_;
+		};
+
+		// Specialization for runtime-ranged chunks (views to integers or another chunks)
+		template<typename T>
+		struct bitchunk_base<T,false>
 		{
 			bitchunk_base() = default;
 			bitchunk_base(T* data_ref, bit_index_t begin = 0, bit_index_t end = sizeof_bits<T>()) :
@@ -53,48 +97,6 @@ namespace strings
 		private:
 			T* data_ref_ = nullptr;
 			bit_index_t begin_ = 0, end_ = 0;
-		};
-
-		template<typename T>
-		struct bitchunk_base<T, true>
-		{
-			bitchunk_base() = default;
-			bitchunk_base(const T* data_ref, bit_index_t begin = 0, bit_index_t end = sizeof_bits<T>()) :
-				data_{*data_ref}
-			{}
-
-			constexpr bit_index_t begin() const
-			{
-				return 0;
-			}
-
-			constexpr bit_index_t end() const
-			{
-				return sizeof_bits<T>();
-			}
-
-			const T& data() const
-			{
-				return data_;
-			}
-
-			T& data()
-			{
-				return data_;
-			}
-
-			T* data_ptr()
-			{
-				return &data_;
-			}
-
-			T* data_ptr() const
-			{
-				return &data_;
-			}
-
-		private:
-			T data_;
 		};
 
 		template<typename T, bool FullRange = true>
@@ -153,11 +155,14 @@ namespace strings
 			template<typename U>
 			bitchunk& operator=(U data)
 			{
+				const bit_index_t begin = base::begin();
+				const bit_index_t end = base::end();
+
 				raw_data_t raw_data_ = raw_data();
 				raw_data_t truncated = truncate(data, base::end() - base::begin());
-				raw_data_t hi = high_part(raw_data_, base::end() - 1);
+				raw_data_t hi = high_part(raw_data_, base::end());
 				raw_data_t lo = low_part(raw_data_, base::begin());
-				raw_data_t result = (hi << (base::end() - 1)) | (truncated << base::begin()) | lo;
+				raw_data_t result = (hi << (base::end())) | (truncated << base::begin()) | lo;
 
 				raw_manip::set_by_ptr(base::data_ptr(), result);
 
@@ -170,31 +175,6 @@ namespace strings
 				return raw_manip::get_by_ptr(base::data_ptr());
 			}
 		};
-
-		namespace
-		{
-			template<typename T, typename = void>
-			struct make_chunk_impl_
-			{
-				template<typename U>
-				static bitchunk<T> apply(U&& i)
-				{
-					return{ std::forward<U>(i) };
-				}
-			};
-
-			template<typename T>
-			struct make_chunk_impl_<T, typename T::chunk_accessor_tag>
-			{
-				//static_assert(sizeof(T) != sizeof(T), "make_chunk_impl_<chunk_accessor>");
-
-				template<typename U>
-				static auto apply(U&& acc) -> bitchunk<std::decay_t<decltype(acc.get())>>
-				{
-					return{ acc.data_ref_,  };
-				}
-			};
-		}
 
 		template<typename T>
 		bitchunk<std::decay_t<T>> make_bitchunk(T&& i)
